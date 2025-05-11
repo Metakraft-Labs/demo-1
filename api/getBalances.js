@@ -22,11 +22,10 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: "Invalid wallet address" });
   }
 
-  const rawBalances = {};   // store raw individual balances
+  const rawBalances = {};
   const data = {};
   let totalPoints = 0;
 
-  // Step 1: Fetch each balance
   for (const [key, contractAddress] of Object.entries(contractMap)) {
     try {
       const contract = new ethers.Contract(contractAddress, ABI, provider);
@@ -42,8 +41,6 @@ module.exports = async (req, res) => {
         balance,
         completed
       };
-
-      totalPoints += balance;
     } catch (error) {
       data[key] = {
         balance: null,
@@ -53,14 +50,20 @@ module.exports = async (req, res) => {
     }
   }
 
-  // Step 2: Replace claimedpoints balance with totalPoints
+  // Apply multiplier
+  const purchasedPoints = rawBalances.purchasedpoint || 0;
+  const claimedPoints = rawBalances.claimedpoints || 0;
+
+  const totalCalculatedPoints = (purchasedPoints * 3) + claimedPoints;
+
+  // Override claimedpoints balance to show total
   if (data.claimedpoints) {
-    data.claimedpoints.balance = parseFloat(totalPoints.toFixed(2));
+    data.claimedpoints.balance = parseFloat(totalCalculatedPoints.toFixed(2));
   }
 
   res.status(200).json({
     wallet: address,
     data,
-    totalPoints: parseFloat(totalPoints.toFixed(2))
+    totalPoints: parseFloat(totalCalculatedPoints.toFixed(2))
   });
 };
